@@ -185,6 +185,7 @@ private:
 	bool		_inited = false;
 	bool		_data_good = false;
 	bool		_ext_hdg_good = false;
+    bool        _vision_updated = false;
 
 	orb_advert_t	_mavlink_log_pub = nullptr;
 
@@ -370,9 +371,9 @@ void AttitudeEstimatorQ::task_main()
 		orb_check(_mocap_sub, &mocap_updated);
 
 		if (vision_updated) {
+            _vision_updated = true;
 			orb_copy(ORB_ID(vehicle_vision_attitude), _vision_sub, &_vision);
 			math::Quaternion q(_vision.q);
-
 			math::Matrix<3, 3> Rvis = q.to_dcm();
 			math::Vector<3> v(1.0f, 0.0f, 0.4f);
 
@@ -588,6 +589,7 @@ void AttitudeEstimatorQ::update_parameters(bool force)
 
 bool AttitudeEstimatorQ::init()
 {
+    /*
 	// Rotation matrix can be easily constructed from acceleration and mag field vectors
 	// 'k' is Earth Z axis (Down) unit vector in body frame
 	Vector<3> k = -_accel;
@@ -608,7 +610,9 @@ bool AttitudeEstimatorQ::init()
 
 	// Convert to quaternion
 	_q.from_dcm(R);
-
+    */    
+    _q = _vision.q;
+    
 	// Compensate for magnetic declination
 	Quaternion decl_rotation;
 	decl_rotation.from_yaw(_mag_decl);
@@ -632,7 +636,7 @@ bool AttitudeEstimatorQ::update(float dt)
 {
 	if (!_inited) {
 
-		if (!_data_good) {
+		if (!_data_good || !_vision_updated) {
 			return false;
 		}
 
