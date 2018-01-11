@@ -149,7 +149,7 @@ private:
 	bool		_inited = false;
 	bool		_data_good = false;
 	bool		_ext_hdg_good = false;
-
+    
 	void update_parameters(bool force);
 
 	int update_subscriptions();
@@ -486,9 +486,20 @@ bool AttitudeEstimatorQ::init()
 	k.normalize();
 
 	// 'i' is Earth X axis (North) unit vector in body frame, orthogonal with 'k'
-	Vector<3> i = (_mag - k * (_mag * k));
-	i.normalize();
-
+	Vector<3> i;
+    if (_ext_hdg_mode == 2) {
+        if (!_ext_hdg_good) return _inited;
+        i = (_mocap_hdg - k * (_mocap_hdg * k));
+    }
+    else if (_ext_hdg_mode == 1) {
+        if (!_ext_hdg_good) return _inited;
+        i = (_vision_hdg - k * (_vision_hdg * k));
+    }
+    else {
+        i = (_mag - k * (_mag * k));
+    }
+    i.normalize();
+    
 	// 'j' is Earth Y axis (East) unit vector in body frame, orthogonal with 'k' and 'i'
 	Vector<3> j = k % i;
 
@@ -501,11 +512,13 @@ bool AttitudeEstimatorQ::init()
 	// Convert to quaternion
 	_q.from_dcm(R);
 
-	// Compensate for magnetic declination
-	Quaternion decl_rotation;
-	decl_rotation.from_yaw(_mag_decl);
-	_q = decl_rotation * _q;
-
+    if (_ext_hdg_mode == 0) {
+        // Compensate for magnetic declination
+        Quaternion decl_rotation;
+        decl_rotation.from_yaw(_mag_decl);
+        _q = decl_rotation * _q;
+    }
+    
 	_q.normalize();
 
 	if (PX4_ISFINITE(_q(0)) && PX4_ISFINITE(_q(1)) &&
@@ -623,6 +636,8 @@ bool AttitudeEstimatorQ::update(float dt)
 
 void AttitudeEstimatorQ::update_mag_declination(float new_declination)
 {
+    if (_ext_hdg_mode > 0) return;
+    
 	// Apply initial declination or trivial rotations without changing estimation
 	if (!_inited || fabsf(new_declination - _mag_decl) < 0.0001f) {
 		_mag_decl = new_declination;
