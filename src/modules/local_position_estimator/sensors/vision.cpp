@@ -12,7 +12,7 @@ static const uint32_t 		REQ_VISION_INIT_COUNT = 1;
 // We don't want to deinitialize it because
 // this will throw away a correction before it starts using the data so we
 // set the timeout to 0.5 seconds
-static const uint32_t 		VISION_TIMEOUT =    500000;	// 0.5 s
+static const uint32_t 		VISION_TIMEOUT =    650000;	// 0.65 s
 
 void BlockLocalPositionEstimator::visionInit()
 {
@@ -120,7 +120,7 @@ void BlockLocalPositionEstimator::visionCorrect()
 	// fault detection
 	float beta = (r.transpose() * (S_I * r))(0, 0);
 
-	if (beta > 1000.f) { //BETA_TABLE[n_y_vision]) {
+	if (beta > BETA_TABLE[n_y_vision]) {
 		if (!(_sensorFault & SENSOR_VISION)) {
 			mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] vision position fault, beta %5.2f", double(beta));
 			_sensorFault |= SENSOR_VISION;
