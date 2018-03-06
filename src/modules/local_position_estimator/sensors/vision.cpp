@@ -12,7 +12,7 @@ static const uint32_t 		REQ_VISION_INIT_COUNT = 1;
 // We don't want to deinitialize it because
 // this will throw away a correction before it starts using the data so we
 // set the timeout to 0.5 seconds
-static const uint32_t 		VISION_TIMEOUT =    650000;	// 0.65 s
+static const uint32_t 		VISION_TIMEOUT =    100000;	// 0.1s
 
 void BlockLocalPositionEstimator::visionInit()
 {
