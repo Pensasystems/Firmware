@@ -604,7 +604,7 @@ bool AttitudeEstimatorQ::update(float dt)
 		}
 	}
 
-	if (_ext_hdg_mode == 0 || (!_ext_hdg_good && _has_mag)) {
+	if (_ext_hdg_mode == 0 || !_ext_hdg_good) {
 		// Magnetometer correction
 		// Project mag field vector to global frame and extract XY component
 		Vector3f mag_earth = _q.conjugate(_mag);
