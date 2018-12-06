@@ -73,8 +73,8 @@ set(config_module_list
 	#
 	# FC_ADDON drivers
 	#
-	platforms/qurt/fc_addon/uart_esc
-
+	#platforms/qurt/fc_addon/uart_esc
+	drivers/snapdragon_pwm_out
 	#
 	# sources for muorb over fastrpc
 	#
