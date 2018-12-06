@@ -137,11 +137,13 @@ private:
 	bool		_acc_comp = false;
 	float		_bias_max = 0.0f;
 	int32_t		_ext_hdg_mode = 0;
+	int32_t     _has_mag = 1;
 
 	Vector3f	_gyro;
 	Vector3f	_accel;
 	Vector3f	_mag;
 
+	vehicle_attitude_s _vision = {};
 	Vector3f	_vision_hdg;
 	Vector3f	_mocap_hdg;
 
@@ -344,12 +346,11 @@ void AttitudeEstimatorQ::task_main()
 		orb_check(_vision_sub, &vision_updated);
 
 		if (vision_updated) {
-			vehicle_attitude_s vision;
 
-			if (orb_copy(ORB_ID(vehicle_vision_attitude), _vision_sub, &vision) == PX4_OK) {
-				Quatf q(vision.q);
+			if (orb_copy(ORB_ID(vehicle_vision_attitude), _vision_sub, &_vision) == PX4_OK) {
+				Quatf q(_vision.q);
 
-				Dcmf Rvis = Quatf(vision.q);
+				Dcmf Rvis = Quatf(_vision.q);
 				Vector3f v(1.0f, 0.0f, 0.4f);
 
 				// Rvis is Rwr (robot respect to world) while v is respect to world.
@@ -360,7 +361,7 @@ void AttitudeEstimatorQ::task_main()
 				// vision external heading usage (ATT_EXT_HDG_M 1)
 				if (_ext_hdg_mode == 1) {
 					// Check for timeouts on data
-					_ext_hdg_good = vision.timestamp > 0 && (hrt_elapsed_time(&vision.timestamp) < 500000);
+					_ext_hdg_good = _vision.timestamp > 0 && (hrt_elapsed_time(&_vision.timestamp) < 500000);
 				}
 			}
 		}
@@ -477,9 +478,8 @@ void AttitudeEstimatorQ::update_parameters(bool force)
 
 		// disable mag fusion if the system does not have a mag
 		if (_params_handles.has_mag != PARAM_INVALID) {
-			int32_t has_mag;
 
-			if (param_get(_params_handles.has_mag, &has_mag) == 0 && has_mag == 0) {
+			if (param_get(_params_handles.has_mag, &_has_mag) == 0 && _has_mag == 0) {
 				_w_mag = 0.f;
 			}
 		}
@@ -512,30 +512,46 @@ void AttitudeEstimatorQ::update_parameters(bool force)
 
 bool AttitudeEstimatorQ::init()
 {
-	// Rotation matrix can be easily constructed from acceleration and mag field vectors
-	// 'k' is Earth Z axis (Down) unit vector in body frame
-	Vector3f k = -_accel;
-	k.normalize();
+	if (1 == _has_mag)
+	{
+		// Rotation matrix can be easily constructed from acceleration and mag field vectors
+		// 'k' is Earth Z axis (Down) unit vector in body frame
+		Vector3f k = -_accel;
+		k.normalize();
 
-	// 'i' is Earth X axis (North) unit vector in body frame, orthogonal with 'k'
-	Vector3f i = (_mag - k * (_mag * k));
-	i.normalize();
+		// 'i' is Earth X axis (North) unit vector in body frame, orthogonal with 'k'
+		Vector3f i = (_mag - k * (_mag * k));
+		i.normalize();
 
-	// 'j' is Earth Y axis (East) unit vector in body frame, orthogonal with 'k' and 'i'
-	Vector3f j = k % i;
+		// 'j' is Earth Y axis (East) unit vector in body frame, orthogonal with 'k' and 'i'
+		Vector3f j = k % i;
 
-	// Fill rotation matrix
-	Dcmf R;
-	R.setRow(0, i);
-	R.setRow(1, j);
-	R.setRow(2, k);
+		// Fill rotation matrix
+		Dcmf R;
+		R.setRow(0, i);
+		R.setRow(1, j);
+		R.setRow(2, k);
 
-	// Convert to quaternion
-	_q = R;
+		// Convert to quaternion
+		_q = R;
 
-	// Compensate for magnetic declination
-	Quatf decl_rotation = Eulerf(0.0f, 0.0f, _mag_decl);
-	_q = _q * decl_rotation;
+		// Compensate for magnetic declination
+		Quatf decl_rotation = Eulerf(0.0f, 0.0f, _mag_decl);
+		_q = _q * decl_rotation;
+	}
+	else if (1 == _ext_hdg_mode)
+	{
+		_q = _vision.q;
+	}
+	else if (2 == _ext_hdg_mode)
+	{
+		// TODO
+		return false;
+	}
+	else
+	{
+		return false;
+	}
 
 	_q.normalize();
 
@@ -555,7 +571,7 @@ bool AttitudeEstimatorQ::update(float dt)
 {
 	if (!_inited) {
 
-		if (!_data_good) {
+		if (!_data_good || !_ext_hdg_good) {
 			return false;
 		}
 
@@ -588,7 +604,7 @@ bool AttitudeEstimatorQ::update(float dt)
 		}
 	}
 
-	if (_ext_hdg_mode == 0 || !_ext_hdg_good) {
+	if (_ext_hdg_mode == 0 || (!_ext_hdg_good && _has_mag)) {
 		// Magnetometer correction
 		// Project mag field vector to global frame and extract XY component
 		Vector3f mag_earth = _q.conjugate(_mag);
