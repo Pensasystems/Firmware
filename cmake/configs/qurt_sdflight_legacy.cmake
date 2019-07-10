@@ -66,14 +66,17 @@ set(config_module_list
 	#
 	# PX4 drivers
 	#
+	# Pensa - added snapdragon_pwm_out
 	drivers/gps
 	drivers/spektrum_rc
 	drivers/qshell/qurt
+	drivers/snapdragon_pwm_out
 
 	#
 	# FC_ADDON drivers
 	#
-	platforms/qurt/fc_addon/uart_esc
+	# Pensa - commented out line below
+	#platforms/qurt/fc_addon/uart_esc
 
 	#
 	# sources for muorb over fastrpc
