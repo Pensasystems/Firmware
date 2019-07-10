@@ -19,7 +19,7 @@ if (("${BOARD}" STREQUAL "eagle") OR ("${BOARD}" STREQUAL "excelsior"))
 	LINUX_APP(
 		APP_NAME px4
 		IDL_NAME px4muorb
-		APPS_DEST "/home/linaro"
+		APPS_DEST "/root"
 		SOURCES
 			px4muorb_stub.c
 			src/main.cpp
@@ -34,7 +34,7 @@ if (("${BOARD}" STREQUAL "eagle") OR ("${BOARD}" STREQUAL "excelsior"))
 		)
 
 	add_custom_target(upload
-		COMMAND ${PX4_SOURCE_DIR}/Tools/adb_upload.sh $<TARGET_FILE:px4> ${PX4_SOURCE_DIR}/posix-configs/eagle/flight/mainapp.config /home/linaro
+		COMMAND ${PX4_SOURCE_DIR}/Tools/adb_upload.sh $<TARGET_FILE:px4> ${PX4_SOURCE_DIR}/posix-configs/eagle/flight/mainapp.config /root
 		DEPENDS px4
 		COMMENT "uploading px4"
 		USES_TERMINAL
